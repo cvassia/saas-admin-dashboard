@@ -26,3 +26,38 @@ export function useCreateUser() {
         },
     });
 }
+
+export function useUpdateUser() {
+    const tenantId = useTenantStore((s) => s.activeTenantId);
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({
+            id,
+            data,
+        }: {
+            id: string;
+            data: Partial<Omit<UserRow, "id" | "tenantId">>;
+        }) => usersApi.update(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["users", tenantId],
+            });
+        },
+    });
+}
+
+export function useDeleteUser() {
+    const tenantId = useTenantStore((s) => s.activeTenantId);
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (id: string) => usersApi.remove(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["users", tenantId],
+            });
+        },
+    });
+}
+

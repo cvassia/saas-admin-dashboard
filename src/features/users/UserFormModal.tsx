@@ -8,19 +8,24 @@ import {
     Stack,
     TextField,
 } from "@mui/material";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { userSchema } from "./schema";
 import type { UserFormValues } from "./schema";
-import { useCreateUser } from "./hooks";
+import { useCreateUser, useUpdateUser } from "./hooks";
+import type { UserRow } from "./types";
 
 type Props = {
     open: boolean;
     onClose: () => void;
+    user?: UserRow | null;
 };
 
-export function UserFormModal({ open, onClose }: Props) {
+export function UserFormModal({ open, onClose, user }: Props) {
+    const isEdit = Boolean(user);
     const createUser = useCreateUser();
+    const updateUser = useUpdateUser();
 
     const {
         register,
@@ -34,15 +39,35 @@ export function UserFormModal({ open, onClose }: Props) {
         },
     });
 
+    useEffect(() => {
+        if (user) {
+            reset({
+                name: user.name,
+                email: user.email,
+                role: user.role,
+            });
+        } else {
+            reset({ role: "user" });
+        }
+    }, [user, reset]);
+
     const onSubmit = async (values: UserFormValues) => {
-        await createUser.mutateAsync(values);
+        if (isEdit && user) {
+            await updateUser.mutateAsync({
+                id: user.id,
+                data: values,
+            });
+        } else {
+            await createUser.mutateAsync(values);
+        }
+
         reset();
         onClose();
     };
 
     return (
         <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-            <DialogTitle>Create user</DialogTitle>
+            <DialogTitle>{isEdit ? "Edit user" : "Create user"}</DialogTitle>
 
             <DialogContent>
                 <Stack spacing={2} sx={{ mt: 1 }}>
@@ -51,7 +76,6 @@ export function UserFormModal({ open, onClose }: Props) {
                         {...register("name")}
                         error={!!errors.name}
                         helperText={errors.name?.message}
-                        autoFocus
                     />
 
                     <TextField
@@ -83,7 +107,7 @@ export function UserFormModal({ open, onClose }: Props) {
                     onClick={handleSubmit(onSubmit)}
                     disabled={isSubmitting}
                 >
-                    Create
+                    {isEdit ? "Save" : "Create"}
                 </Button>
             </DialogActions>
         </Dialog>
