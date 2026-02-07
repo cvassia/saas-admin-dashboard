@@ -5,7 +5,8 @@ import type { UserRow } from "./types";
 
 export function useUsers() {
     const tenantId = useTenantStore((s) => s.activeTenantId);
-    return useQuery({
+
+    return useQuery<UserRow[]>({
         queryKey: ["users", tenantId],
         queryFn: () => usersApi.list(tenantId),
     });
@@ -13,9 +14,15 @@ export function useUsers() {
 
 export function useCreateUser() {
     const tenantId = useTenantStore((s) => s.activeTenantId);
-    const qc = useQueryClient();
+    const queryClient = useQueryClient();
+
     return useMutation({
-        mutationFn: (payload: Omit<UserRow, "id" | "tenantId">) => usersApi.create(tenantId, payload),
-        onSuccess: () => qc.invalidateQueries({ queryKey: ["users", tenantId] }),
+        mutationFn: (payload: Omit<UserRow, "id" | "tenantId">) =>
+            usersApi.create(tenantId, payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["users", tenantId],
+            });
+        },
     });
 }
