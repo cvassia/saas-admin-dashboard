@@ -1,69 +1,60 @@
+import { databases } from "../../lib/appwrite/client";
 import type { UserRow } from "./types";
 
-// ---- In-memory mock DB (simulates backend) ----
-let USERS: UserRow[] = [
-    {
-        id: "u1",
-        tenantId: "t1",
-        name: "Alice Admin",
-        email: "alice@acme.com",
-        role: "admin",
-    },
-    {
-        id: "u2",
-        tenantId: "t1",
-        name: "Bob User",
-        email: "bob@acme.com",
-        role: "user",
-    },
-    {
-        id: "u3",
-        tenantId: "t2",
-        name: "Clara Admin",
-        email: "clara@globex.com",
-        role: "admin",
-    },
-];
+const DB_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID!;
+const USERS_COL = import.meta.env.VITE_APPWRITE_USERS_COLLECTION_ID!;
 
-// ---- Fake network delay ----
-const delay = (ms = 400) => new Promise((res) => setTimeout(res, ms));
-
-// ---- API ----
 export const usersApi = {
     async list(tenantId: string): Promise<UserRow[]> {
-        await delay();
-        return USERS.filter((u) => u.tenantId === tenantId);
+        const res = await databases.listDocuments(DB_ID, USERS_COL, [
+            `equal("tenantId","${tenantId}")`,
+        ]);
+
+        return res.documents.map((d) => ({
+            id: d.$id,
+            name: d.name,
+            email: d.email,
+            role: d.role,
+            tenantId: d.tenantId,
+        }));
     },
 
     async create(
         tenantId: string,
         payload: Omit<UserRow, "id" | "tenantId">
     ): Promise<UserRow> {
-        await delay();
-        const newUser: UserRow = {
-            id: crypto.randomUUID(),
-            tenantId,
-            ...payload,
+        const doc = await databases.createDocument(
+            DB_ID,
+            USERS_COL,
+            "unique()",
+            { ...payload, tenantId }
+        );
+
+        return {
+            id: doc.$id,
+            name: doc.name,
+            email: doc.email,
+            role: doc.role,
+            tenantId: doc.tenantId,
         };
-        USERS.push(newUser);
-        return newUser;
     },
 
     async update(
         id: string,
         payload: Partial<Omit<UserRow, "id" | "tenantId">>
     ): Promise<UserRow> {
-        await delay();
-        USERS = USERS.map((u) =>
-            u.id === id ? { ...u, ...payload } : u
-        );
-        const updated = USERS.find((u) => u.id === id);
-        if (!updated) throw new Error("User not found");
-        return updated;
+        const doc = await databases.updateDocument(DB_ID, USERS_COL, id, payload);
+
+        return {
+            id: doc.$id,
+            name: doc.name,
+            email: doc.email,
+            role: doc.role,
+            tenantId: doc.tenantId,
+        };
     },
 
     async remove(id: string): Promise<void> {
-        await delay();
-        USERS = USERS.filter((u) => u.id !== id);
+        await databases.deleteDocument(DB_ID, USERS_COL, id);
     },
 };
