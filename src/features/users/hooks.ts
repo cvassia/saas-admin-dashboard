@@ -5,7 +5,8 @@ import type { UserRow } from "./types";
 
 export function useUsers() {
     const tenantId = useTenantStore((s) => s.activeTenantId);
-    return useQuery({
+
+    return useQuery<UserRow[]>({
         queryKey: ["users", tenantId],
         queryFn: () => usersApi.list(tenantId),
     });
@@ -13,9 +14,50 @@ export function useUsers() {
 
 export function useCreateUser() {
     const tenantId = useTenantStore((s) => s.activeTenantId);
-    const qc = useQueryClient();
+    const queryClient = useQueryClient();
+
     return useMutation({
-        mutationFn: (payload: Omit<UserRow, "id" | "tenantId">) => usersApi.create(tenantId, payload),
-        onSuccess: () => qc.invalidateQueries({ queryKey: ["users", tenantId] }),
+        mutationFn: (payload: Omit<UserRow, "id" | "tenantId">) =>
+            usersApi.create(tenantId, payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["users", tenantId],
+            });
+        },
     });
 }
+
+export function useUpdateUser() {
+    const tenantId = useTenantStore((s) => s.activeTenantId);
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({
+            id,
+            data,
+        }: {
+            id: string;
+            data: Partial<Omit<UserRow, "id" | "tenantId">>;
+        }) => usersApi.update(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["users", tenantId],
+            });
+        },
+    });
+}
+
+export function useDeleteUser() {
+    const tenantId = useTenantStore((s) => s.activeTenantId);
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (id: string) => usersApi.remove(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["users", tenantId],
+            });
+        },
+    });
+}
+
